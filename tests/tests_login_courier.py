@@ -1,34 +1,52 @@
 import requests
+import random
+import string
 
 
 class TestLoginCourier:
-    courier = {}
+    login_pass = []
 
     @classmethod
     def setup_class(cls):
-        cls.courier["login"] = "vasiaivanov234"
-        cls.courier["password"] = "12345"
-        cls.courier["firstName"] = "vasia"
-        url = 'https://qa-scooter.praktikum-services.ru/api/v1/courier'
-        payload = cls.courier
-        requests.post(url, json=payload)
+        def generate_random_string(length):
+            letters = string.ascii_lowercase
+            random_string = ''.join(random.choice(letters) for i in range(length))
+            return random_string
+
+        login = generate_random_string(10)
+        password = generate_random_string(10)
+        first_name = generate_random_string(10)
+
+        payload = {
+            "login": login,
+            "password": password,
+            "firstName": first_name
+        }
+        response = requests.post('https://qa-scooter.praktikum-services.ru/api/v1/courier', data=payload)
+
+        if response.status_code == 201:
+            cls.login_pass.append(login)
+            cls.login_pass.append(password)
+            cls.login_pass.append(first_name)
+
+        return cls.login_pass
 
     def test_login_courier(self):
         url = 'https://qa-scooter.praktikum-services.ru/api/v1/courier/login'
-        payload = {"login": self.courier["login"], "password": self.courier["password"]}
+        payload = {"login": self.login_pass[0], "password": self.login_pass[1]}
         response = requests.post(url, json=payload)
         assert response.status_code == 200
         assert 'id' in response.json()
 
     def test_incorrect_login_error(self):
         url = 'https://qa-scooter.praktikum-services.ru/api/v1/courier/login'
-        payload = {"login": "login", "password": self.courier["password"]}
+        payload = {"login": "login", "password": self.login_pass[1]}
         response = requests.post(url, json=payload)
         assert response.status_code == 404
 
     def test_login_without_password_error(self):
         url = 'https://qa-scooter.praktikum-services.ru/api/v1/courier/login'
-        payload = {"login": self.courier["login"], "password": ""}
+        payload = {"login": self.login_pass[0], "password": ""}
         response = requests.post(url, json=payload)
         assert response.status_code == 400
 
@@ -41,7 +59,7 @@ class TestLoginCourier:
     @classmethod
     def teardown_class(cls):
         url = 'https://qa-scooter.praktikum-services.ru/api/v1/courier/login'
-        payload = {"login": cls.courier["login"], "password": cls.courier["password"]}
+        payload = {"login": cls.login_pass[0], "password": cls.login_pass[1]}
         response = requests.post(url, json=payload)
         courier_id = response.json().get('id')
         url2 = f'https://qa-scooter.praktikum-services.ru/api/v1/courier/{courier_id}'
